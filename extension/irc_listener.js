@@ -1,13 +1,8 @@
 'use strict';
 
 const chat = require('tmi.js');
-const hist = require('./history.js');
 const EventEmitter = require('events').EventEmitter;
 const emitter = new EventEmitter();
-
-function isBroadcaster(user, channel) {
-	return user.username === channel;
-}
 
 module.exports = function (nodecg) {
 	const client = new chat.client(nodecg.bundleConfig['tmi.js']);
@@ -47,37 +42,6 @@ module.exports = function (nodecg) {
 	client.addListener('resub', (channel, username, months) => {
 		const channelNoPound = channel.replace('#', '');
 		emitter.emit('subscription', username, channelNoPound, parseInt(months, 10));
-	});
-
-	client.addListener('chat', (channel, user, message) => {
-		const channelNoPound = channel.replace('#', '');
-		if (!isBroadcaster(user, channelNoPound)) {
-			return;
-		}
-
-		const parts = message.split(' ', 2);
-		const cmd = parts[0];
-		const arg = parts.length > 1 ? parts[1] : null;
-
-		if (!arg) {
-			return;
-		}
-
-		switch (cmd) {
-			case '!sendsub':
-				if (hist.exists(arg, channelNoPound)) {
-					client.say(channel, `That username (${arg}) appears to be a duplicate. ` +
-						'Use !sendsubforce to override.');
-					break;
-				}
-			/* falls through */
-			case '!sendsubforce':
-				emitter.emit('forcedSubscription', arg, channelNoPound);
-				client.say(channel, `Added ${arg} as a subscriber`);
-				break;
-			default:
-			// Do nothing.
-		}
 	});
 
 	return emitter;
